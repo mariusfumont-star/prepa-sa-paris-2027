@@ -312,7 +312,7 @@ img{max-width:100%}
 
   <nav class="tabs" id="tabs" aria-label="Sections">
     <a href="#tableau">Tableau de bord <small id="nav-global"></small></a>
-    <a href="#veille" hidden>Veille d'actualité <small id="nav-veille"></small></a>
+    <a href="#veille">Veille d'actualité <small id="nav-veille"></small></a>
     <a href="#concours">Le concours</a>
     <a href="#themes">Programme du concours <small id="nav-themes"></small></a>
     <a href="#ecrit">Méthode du cas pratique <small id="nav-ecrit"></small></a>
@@ -376,7 +376,7 @@ img{max-width:100%}
     <section class="view" id="v-veille" hidden>
       <div>
         <h2>Veille d'actualité</h2>
-        <p class="lede">Chaque matin, une synthèse de l'actualité de la Ville de Paris et de la fonction publique, rédigée pour l'oral.</p>
+        <p class="lede">Chaque matin, une synthèse de l'actualité de la Ville de Paris, des institutions parisiennes et de la fonction publique territoriale, rédigée pour l'oral : les faits, les chiffres, et ce qu'un secrétaire administratif doit en retenir. Une fiche détaillée accompagne chaque sujet.</p>
       </div>
       <div class="row" id="vDays" style="gap:6px"></div>
       <div id="vBody"><div class="sheet"><p class="prose" style="margin:0">Chargement des synthèses… La première synthèse apparaîtra ici dès sa publication, chaque matin vers 7 h.</p></div></div>
@@ -1083,14 +1083,14 @@ async function decryptVeilleFiches(){
 function ficheEl(f, key){
   const det = el("details",{class:"fiche"}); if(ficheOpen.has(key)) det.open = true;
   det.addEventListener("toggle",()=>{ if(det.open) ficheOpen.add(key); else ficheOpen.delete(key); });
-  det.append(el("summary",{text:"Fiche pour l'attaché"}));
+  det.append(el("summary",{text:"Fiche pour le SA"}));
   const b = el("div",{class:"fbody"});
   const sec = (t)=>b.append(el("h5",{text:t}));
   const list = (arr, ordered)=>{ const u=el(ordered?"ol":"ul"); arr.forEach(x=>u.append(el("li",{text:String(x)}))); b.append(u); };
   if(f.contexte){ sec("Contexte et cadre"); b.append(el("p",{text:String(f.contexte)})); }
   if(Array.isArray(f.acteurs) && f.acteurs.length){ sec("Acteurs et compétences"); list(f.acteurs); }
   if(Array.isArray(f.notions) && f.notions.length){ sec("Notions clés"); const dl=el("dl"); f.notions.forEach(n=>{ dl.append(el("dt",{text:String(n.terme||"")}), el("dd",{text:String(n.def||"")})); }); b.append(dl); }
-  if(f.analyse){ sec("Analyse pour l'attaché"); b.append(el("p",{text:String(f.analyse)})); }
+  if(f.analyse){ sec("Analyse pour le SA"); b.append(el("p",{text:String(f.analyse)})); }
   if(f.situation && f.situation.cas){ sec("Mise en situation possible"); b.append(el("p",{class:"cas",text:String(f.situation.cas)})); if(Array.isArray(f.situation.demarche)){ b.append(el("p",{style:"margin:6px 0 2px;font-weight:600",text:"Démarche attendue :"})); list(f.situation.demarche, true); } }
   if(Array.isArray(f.questions) && f.questions.length){ sec("Questions possibles à l'oral"); list(f.questions); }
   const th = (Array.isArray(f.themes)?f.themes:[]).map(id=>(window.THEMES_TITRES||[]).find(t=>t.id===id)).filter(Boolean);
@@ -1131,12 +1131,12 @@ function renderVeille(){
       box.append(el("div",{class:"row"}, el("span",{class:"pill acc",text:String(it.theme||"Actualité")})));
       box.append(el("h4",{text:String(it.titre||"")}));
       if(it.resume) box.append(el("p",{class:"prose",style:"margin:0",text:String(it.resume)}));
-      if(it.enjeu){ const e=el("div",{class:"enjeu"}); e.append(el("strong",{text:"Pour l'attaché : "}), String(it.enjeu)); box.append(e); }
+      if(it.enjeu){ const e=el("div",{class:"enjeu"}); e.append(el("strong",{text:"Pour le SA : "}), String(it.enjeu)); box.append(e); }
       if(it.fiche_enc || it.fiche){
         const f = it._fiche || (it.fiche && typeof it.fiche==="object" ? it.fiche : null);
         if(unlocked() && f) box.append(ficheEl(f, key));
-        else if(unlocked()) box.append(el("div",{class:"fichelock",text:"Fiche pour l'attaché : déchiffrement…"}));
-        else { const l=el("a",{class:"fichelock",href:"#compte"}); l.append(el("strong",{text:"Fiche pour l'attaché"}), " · réservée aux candidats inscrits"); box.append(l); }
+        else if(unlocked()) box.append(el("div",{class:"fichelock",text:"Fiche pour le SA : déchiffrement…"}));
+        else { const l=el("a",{class:"fichelock",href:"#compte"}); l.append(el("strong",{text:"Fiche pour le SA"}), " · version complète (essai gratuit 7 jours)"); box.append(l); }
       }
       const links=el("div",{class:"links",style:"font-size:.82rem"});
       (Array.isArray(it.sources)?it.sources:[]).forEach(s=>{ if(s && /^https:\/\//.test(s.url||"")) links.append(el("a",{href:s.url,target:"_blank",rel:"noopener",text:String(s.nom||"Source")})); });
@@ -1757,6 +1757,7 @@ async function loadPremium(){
     try{ got = await fetchContenu(); }catch(e){ if(cached) got = {v:cached.v, data:cached.data}; else throw e; }
     if(!got){ premiumState = "nocontent"; renderAll(); route(); return; }
     applyPremium(got.data); cachePut(got.v, got.data);
+    try{ const d = await firebase.firestore().collection("config").doc("sa_cle").get(); if(d.exists && d.data().k) premiumKeyB64 = d.data().k; }catch(e){}
     premiumState = "ok"; renderAll(); route(); decryptVeilleFiches();
   }catch(e){
     premiumState = (e && e.code==="permission-denied") ? (ACC.kind==="admin" ? "nocontent" : "expire") : "error";
